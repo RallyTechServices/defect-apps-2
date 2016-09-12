@@ -15,7 +15,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
     config: {
         defaultSettings: {
             closedStateValues: ['Closed'],
-            groupField: 'Severity'
+            sprintTargetField: 'ChildrenPlannedVelocity'
         }
     },
     
@@ -72,6 +72,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         
         Deft.Chain.pipeline([
             this._getIterations,
+            this._getChildIterations,
             //this._getDefectsInRelease,
             this._getDefectLookbackData,
             this._makeChart
@@ -82,6 +83,11 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         var deferred = Ext.create('Deft.Deferred');
         
         var release = this.release;
+        
+        var fetch = ['StartDate','Name','EndDate'];
+        var target_field = this.getSetting('sprintTargetField');
+
+        if ( !Ext.isEmpty(target_field) ) { fetch.push(target_field); }
         
         var end_date = new Date();
         if ( release.get('ReleaseDate') < end_date ) {
@@ -97,7 +103,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             model:'Iteration',
             limit:Infinity,
             filters: filters,
-            fetch: ['StartDate','Name','EndDate'],
+            fetch: fetch,
             context: {
                 projectScopeUp: false,
                 projectScopeDown: false
@@ -107,6 +113,50 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         TSUtilities.loadWsapiRecords(config).then({
             success: function(results) {
                 this.iterations = results;
+                deferred.resolve();
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            },
+            scope: this
+        });
+        
+        return deferred.promise;
+    },
+    
+    _getChildIterations: function() {
+        var deferred = Ext.create('Deft.Deferred');
+        
+        var release = this.release;
+        
+        var fetch = ['StartDate','Name','EndDate','Project','Children'];
+        var target_field = this.getSetting('sprintTargetField');
+
+        if ( !Ext.isEmpty(target_field) ) { fetch.push(target_field); }
+        
+        var end_date = new Date();
+        if ( release.get('ReleaseDate') < end_date ) {
+            end_date = release.get('ReleaseDate');
+        }
+        var filters = Rally.data.wsapi.Filter.and([
+            {property:'StartDate',operator:'>=',value: release.get('ReleaseStartDate')},
+            {property:'StartDate',operator:'<=',value: end_date},
+            {property:'EndDate',operator:'<=',value: release.get('ReleaseDate')}
+        ]);
+        
+        var config = {
+            model:'Iteration',
+            limit:Infinity,
+            filters: filters,
+            fetch: fetch
+        };
+        
+        TSUtilities.loadWsapiRecords(config).then({
+            success: function(results) {
+                console.log(results);
+                this.child_iterations = Ext.Array.filter(results, function(result){
+                    return ( result.get('Project').Children.Count === 0 );
+                });
                 deferred.resolve();
             },
             failure: function(msg) {
@@ -190,7 +240,10 @@ Ext.define("TSFixedTargetReleaseBurnup", {
                         return closed_defects.length;
                     })
                 };
-                deferred.resolve([open_series,closed_series]);
+                
+                var target_series = this._getTargetSeries();
+                
+                deferred.resolve([open_series,target_series,closed_series]);
             },
             failure: function(msg) {
                 deferred.reject(msg);
@@ -199,6 +252,32 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         });
         
         return deferred.promise;
+    },
+    
+    _getTargetSeries: function() {
+        var target_field = this.getSetting('sprintTargetField');
+        var targets_by_iteration_name = {};
+        Ext.Array.each(this.child_iterations, function(iteration) {
+            var target = iteration.get(target_field) || 0;
+            var name = iteration.get('Name');
+            
+            if ( Ext.isEmpty(targets_by_iteration_name[name]) ) {
+                targets_by_iteration_name[name] = 0;
+            }
+            
+            targets_by_iteration_name[name] = targets_by_iteration_name[name] + target;
+        });
+        
+        var series = {
+            name: 'Release Target',
+            data: Ext.Array.map(this.iterations, function(iteration){
+                var name = iteration.get('Name');
+                return targets_by_iteration_name[name] || 0;
+            })
+        };
+        
+        return series;
+        
     },
     
     _getDefectLookbackDataForSprint: function(end_date,defect_oids) {    
@@ -359,6 +438,22 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         var me = this;
         var left_margin = 5;
         return [{
+            name: 'sprintTargetField',
+            xtype: 'rallyfieldcombobox',
+            model: 'Iteration',
+            label: 'Sprint Target Field:',
+            labelWidth: 150,
+            margin: 5,
+            _isNotHidden: function(field) {
+                if ( field.hidden ) { return false; }
+                var defn = field.attributeDefinition;
+                if ( Ext.isEmpty(defn) ) { return false; }
+                
+                var valid_types = ['INTEGER','QUANTITY','DECIMAL'];
+                return ( Ext.Array.contains(valid_types,defn.AttributeType) );
+            }        
+            //
+        },{
             name: 'closedStateValues',
             xtype: 'tsmultifieldvaluepicker',
             model: 'Defect',
