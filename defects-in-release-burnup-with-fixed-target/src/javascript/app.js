@@ -167,17 +167,30 @@ Ext.define("TSFixedTargetReleaseBurnup", {
                 var closedStates = this.getSetting('closedStateValues') || [];
                 if ( !Ext.isArray(closedStates) ) { closedStates = closedStates.split(/,/); }
                 
-                var series = [{
+                var open_series = {
                     name: 'Product Defects',
                     data: Ext.Array.map(results, function(result_set){
                         
                         var open_defects = Ext.Array.filter(result_set, function(result){
                             return !Ext.Array.contains(closedStates,result.get('State'));
                         });
+                        
                         return open_defects.length;
                     })
-                }];
-                deferred.resolve(series);
+                };
+                
+                var closed_series = {
+                    name: 'Fixed in Release',
+                    data: Ext.Array.map(results, function(result_set){
+                        
+                        var closed_defects = Ext.Array.filter(result_set, function(result){
+                            return Ext.Array.contains(closedStates,result.get('State'));
+                        });
+                        
+                        return closed_defects.length;
+                    })
+                };
+                deferred.resolve([open_series,closed_series]);
             },
             failure: function(msg) {
                 deferred.reject(msg);
