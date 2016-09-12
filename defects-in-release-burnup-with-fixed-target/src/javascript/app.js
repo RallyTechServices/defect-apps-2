@@ -72,7 +72,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         
         Deft.Chain.pipeline([
             this._getIterations,
-            this._getDefectsInRelease,
+            //this._getDefectsInRelease,
             this._getDefectLookbackData,
             this._makeChart
         ],this).always(function() { me.setLoading(false); });        
@@ -121,17 +121,19 @@ Ext.define("TSFixedTargetReleaseBurnup", {
     _getDefectsInRelease: function() {
         var release = this.release;
         
-        var filters = Rally.data.wsapi.Filter.or([
-            {property:'Release.Name', value: release.get('Name')},
-            {property:'Requirement.Release.Name',value:release.get('Name')}
-        ]);
+        // Changed: get all defects
+        var filters = [{property:'ObjectID',operator:'>',value:0}];
+//        var filters = Rally.data.wsapi.Filter.or([
+//            {property:'Release.Name', value: release.get('Name')},
+//            {property:'Requirement.Release.Name',value:release.get('Name')}
+//        ]);
         
         var config = {
             model: 'Defect',
             limit:Infinity,
             pageSize: 2000,
             filters: filters,
-            fetch: ['ObjectID']
+            fetch: ['ObjectID','State']
         };
         
         return TSUtilities.loadWsapiRecords(config);
@@ -142,7 +144,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         var me = this,
             deferred = Ext.create('Deft.Deferred');
 
-        var oids = Ext.Array.map(defects, function(defect){
+        var oids = Ext.Array.map(defects || [], function(defect){
             return defect.get('ObjectID');
         });
         
@@ -177,13 +179,18 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         return deferred.promise;
     },
     
-    _getDefectLookbackDataForSprint: function(end_date,defect_oids) {        
-        var filters = [
-            {property:'ObjectID',operator:'in',value:defect_oids},
+    _getDefectLookbackDataForSprint: function(end_date,defect_oids) {    
+        var filters = [];
+        
+        if ( defect_oids.length > 0 ) {
+            filters.push({property:'ObjectID',operator:'in',value:defect_oids});
+        }
+        
+        Ext.Array.push(filters, [
             {property:'_TypeHierarchy',value:'Defect'},
             {property:'_ProjectHierarchy',value: this.getContext().getProject().ObjectID},
             {property:'__At', value: Rally.util.DateTime.toIsoString(end_date) }
-        ];
+        ]);
         
         var config = {
             fetch: ['State','ObjectID'],
