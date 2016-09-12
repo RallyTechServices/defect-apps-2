@@ -3,13 +3,13 @@
 <head>
     <title>TS Fixed Target Release Burnup</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Mon Sep 12 2016 09:37:30 GMT-0700 (PDT) -->
+    <!--  Build Date: Mon Sep 12 2016 09:46:22 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Sep 12 2016 09:37:30 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Mon Sep 12 2016 09:46:22 GMT-0700 (PDT)";
         var STORY    = "US428";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 94809240966;
+        var CHECKSUM = 95446742495;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -2066,19 +2066,28 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             );
         });
         
+        
         Deft.Chain.sequence(promises,me).then({
             success: function(results) {
+                var closedStates = this.getSetting('closedStateValues') || [];
+                if ( !Ext.isArray(closedStates) ) { closedStates = closedStates.split(/,/); }
+                
                 var series = [{
                     name: 'Product Defects',
                     data: Ext.Array.map(results, function(result_set){
-                        return result_set.length;
+                        
+                        var open_defects = Ext.Array.filter(result_set, function(result){
+                            return !Ext.Array.contains(closedStates,result.get('State'));
+                        });
+                        return open_defects.length;
                     })
                 }];
                 deferred.resolve(series);
             },
             failure: function(msg) {
                 deferred.reject(msg);
-            }
+            },
+            scope: this
         });
         
         return deferred.promise;
@@ -2119,11 +2128,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             container.add({xtype:'container',html:'No Iterations in Release'});
             return;
         }
-        
-        var closedStates = this.getSetting('closedStateValues') || [];
-        if ( !Ext.isArray(closedStates) ) { closedStates = closedStates.split(/,/); }
-        
-        
+
         container.add({
             xtype: 'rallychart',
             chartData: { series: series, categories: categories },
@@ -2253,6 +2258,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             margin: left_margin,
             fieldLabel: 'States to Consider Closed',
             labelWidth: 150,
+            margin: '5 5 100 5',
             readyState: 'ready'
         }];
     },

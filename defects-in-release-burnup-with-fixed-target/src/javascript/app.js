@@ -161,19 +161,28 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             );
         });
         
+        
         Deft.Chain.sequence(promises,me).then({
             success: function(results) {
+                var closedStates = this.getSetting('closedStateValues') || [];
+                if ( !Ext.isArray(closedStates) ) { closedStates = closedStates.split(/,/); }
+                
                 var series = [{
                     name: 'Product Defects',
                     data: Ext.Array.map(results, function(result_set){
-                        return result_set.length;
+                        
+                        var open_defects = Ext.Array.filter(result_set, function(result){
+                            return !Ext.Array.contains(closedStates,result.get('State'));
+                        });
+                        return open_defects.length;
                     })
                 }];
                 deferred.resolve(series);
             },
             failure: function(msg) {
                 deferred.reject(msg);
-            }
+            },
+            scope: this
         });
         
         return deferred.promise;
@@ -214,11 +223,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             container.add({xtype:'container',html:'No Iterations in Release'});
             return;
         }
-        
-        var closedStates = this.getSetting('closedStateValues') || [];
-        if ( !Ext.isArray(closedStates) ) { closedStates = closedStates.split(/,/); }
-        
-        
+
         container.add({
             xtype: 'rallychart',
             chartData: { series: series, categories: categories },
@@ -348,6 +353,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             margin: left_margin,
             fieldLabel: 'States to Consider Closed',
             labelWidth: 150,
+            margin: '5 5 100 5',
             readyState: 'ready'
         }];
     },

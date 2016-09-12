@@ -6,9 +6,12 @@ The x axis is sprint in the release, up to the current sprint (if release is in 
 
 The y axis is count.
 
-Series:
-  * Product Defects: At the end of every sprint (or today if the current sprint), count the number of defects that are either associated with the release directly OR associated with the release via a story associated with the release.  (NOTE: because we can't get the list of defects associated with a story associated with the release on a date, we look for defects currently associated with a storyin the release and then look at its status on each date.)
+App Settings allows the admin to choose the Defect states that can be counted as a "closed" state.
 
+Series:
+  * Product Defects: At the end of every sprint (or today if the current sprint), count the number of defects that are NOT in a closed state.  
+  
+  
 ## Development Notes
 
 ### First Load
