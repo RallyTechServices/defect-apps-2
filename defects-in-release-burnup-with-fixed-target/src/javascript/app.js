@@ -111,7 +111,8 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             context: {
                 projectScopeUp: false,
                 projectScopeDown: false
-            }
+            },
+            sorters: [{property:'StartDate',direction:'ASC'}]
         };
         
         TSUtilities.loadWsapiRecords(config).then({
