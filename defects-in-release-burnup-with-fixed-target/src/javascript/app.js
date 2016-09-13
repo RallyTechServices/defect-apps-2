@@ -69,6 +69,10 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             return;
         }
         this.setLoading("Loading Release Information...");
+
+        this.base_filter = this.getSetting('defectFilter');
+        
+        if ( !Ext.isEmpty(this.base_filter) && Ext.isString(this.base_filter) ) { this.base_filter = Ext.JSON.decode(this.base_filter); }
         
         Deft.Chain.pipeline([
             this._getIterations,
@@ -293,6 +297,11 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             {property:'__At', value: Rally.util.DateTime.toIsoString(end_date) }
         ]);
         
+        if ( !Ext.isEmpty( this.base_filter ) ) {
+            this.logger.log("Using base filter: ", this.base_filter);
+            filters.push(this.base_filter);
+        }
+        
         var config = {
             fetch: ['State','ObjectID'],
             hydrate: ['State'],
@@ -423,21 +432,17 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         return typeof(this.getAppId()) == 'undefined';
     },
     
-    _fieldIsNotHidden: function(field) {
-        if ( field.hidden ) { return false; }
-        //console.log( field.name, field);
-        if ( field.attributeDefinition && field.attributeDefinition.Constrained ) {
-            if ( field.attributeDefinition.SchemaType == "string" ) {
-                return true;
-            }
-        }
-        return false;
-    },
-    
     getSettingsFields: function() {
         var me = this;
         var left_margin = 5;
         return [{
+            name: 'defectFilter',
+            xtype: 'tssettingsfilterfield',
+            label: 'Filter:',
+            labelWidth: 150,
+            margin: 5,
+            model: 'Defect'
+        },{
             name: 'sprintTargetField',
             xtype: 'rallyfieldcombobox',
             model: 'Iteration',

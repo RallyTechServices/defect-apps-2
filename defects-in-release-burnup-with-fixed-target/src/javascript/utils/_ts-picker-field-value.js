@@ -317,6 +317,8 @@ Ext.define('CA.techservices.picker.FieldValuePicker', {
     setValue: function (values) {
         var items = Ext.isString(values) ? values.split(',') : Ext.Array.from(values);
 
+        console.log('values:', values, items);
+        
         items = Ext.Array.merge(items, this.alwaysSelectedValues);
 
         if (!Ext.isEmpty(items) && this.store && this.store.isLoading()) {
