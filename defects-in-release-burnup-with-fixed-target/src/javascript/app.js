@@ -273,6 +273,18 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             targets_by_iteration_name[name] = targets_by_iteration_name[name] + target;
         });
         
+        // add up values
+        var total = 0;
+        Ext.Array.each( this.iterations, function(iteration) {
+            var name = iteration.get('Name');
+            if ( Ext.isEmpty(targets_by_iteration_name[name]) ) {
+                targets_by_iteration_name[name] = 0;
+            }
+            var target = targets_by_iteration_name[name] || 0;
+            total += target;
+            targets_by_iteration_name[name] = total;
+        });
+        
         var series = {
             name: 'Release Target',
             data: Ext.Array.map(this.iterations, function(iteration){

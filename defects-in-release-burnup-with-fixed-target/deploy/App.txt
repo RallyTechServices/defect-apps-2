@@ -3,13 +3,13 @@
 <head>
     <title>TS Fixed Target Release Burnup</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Mon Sep 12 2016 20:58:48 GMT-0700 (PDT) -->
+    <!--  Build Date: Wed Sep 14 2016 15:45:19 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Sep 12 2016 20:58:48 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Wed Sep 14 2016 15:45:19 GMT-0700 (PDT)";
         var STORY    = "US428";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 115248825110;
+        var CHECKSUM = 116875638717;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -2065,7 +2065,8 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             context: {
                 projectScopeUp: false,
                 projectScopeDown: false
-            }
+            },
+            sorters: [{property:'StartDate',direction:'ASC'}]
         };
         
         TSUtilities.loadWsapiRecords(config).then({
@@ -2224,6 +2225,18 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             }
             
             targets_by_iteration_name[name] = targets_by_iteration_name[name] + target;
+        });
+        
+        // add up values
+        var total = 0;
+        Ext.Array.each( this.iterations, function(iteration) {
+            var name = iteration.get('Name');
+            if ( Ext.isEmpty(targets_by_iteration_name[name]) ) {
+                targets_by_iteration_name[name] = 0;
+            }
+            var target = targets_by_iteration_name[name] || 0;
+            total += target;
+            targets_by_iteration_name[name] = total;
         });
         
         var series = {
