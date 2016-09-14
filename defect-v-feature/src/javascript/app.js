@@ -4,7 +4,7 @@ Ext.define("TSDefectVsFeature", {
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
     items: [
-        {xtype:'container',itemId:'selector_box'},
+        {xtype:'container',itemId:'selector_box', layout: 'hbox'},
         {xtype:'container',itemId:'display_box'}
     ],
 
@@ -31,7 +31,31 @@ Ext.define("TSDefectVsFeature", {
                 }
             }
         });
+      
+        var store = Ext.create('Rally.data.custom.Store',{
+            xtype:'rallycustom',
+            autoLoad: true,
+            data: [
+                { _refObjectName:'Size', _ref: 'size' },
+                { _refObjectName:'Count',_ref: 'count'}
+            ]
+        });
+                
         
+        this.metric_selector = container.add({
+            xtype:'rallycombobox',
+            store: store,
+            itemId: 'metric_selector',
+            margin: 10,
+            width: 100,
+            stateful: true,
+            stateId: 'techservices-timeline-metriccombo-1',
+            stateEvents:['select','change'],
+            listeners: {
+                scope: this,
+                change: this._updateData
+            }
+        });        
         container.add({xtype:'container',flex:1});
         
     },
@@ -40,6 +64,7 @@ Ext.define("TSDefectVsFeature", {
         var me = this;
         this.down('#display_box').removeAll();
         if ( Ext.isEmpty(this.release) ) { return; }
+        if ( Ext.isEmpty(this.metric_selector) ) { return; }
         
         this.setLoading('Gathering data...');
         Deft.Chain.pipeline([
@@ -126,10 +151,15 @@ Ext.define("TSDefectVsFeature", {
     },
     
     _getTypeSeries: function(type,item_sets) {
+        var metric = this.metric_selector.getValue() || "size";
+        var suffix = "SPs";
+        if ( metric == "count" ) { suffix = "Count";}
+        
         var names_by_type = {
-            'hierarchicalrequirement': 'Feature SPs',
-            'defect': 'Defect SPs'
+            'hierarchicalrequirement': Ext.String.format('Feature {0}', suffix),
+            'defect': Ext.String.format('Defect {0}', suffix),
         };
+        
         
         return {
             name: names_by_type[type],
@@ -141,6 +171,9 @@ Ext.define("TSDefectVsFeature", {
                 var size = 0;
                 Ext.Array.each(type_items, function(item){
                     var item_size = item.get('PlanEstimate') || 0;
+                    if ( metric == 'count' ) {
+                        item_size = 1;
+                    }
                     size += item_size;
                 });
                 return size;
@@ -234,6 +267,7 @@ Ext.define("TSDefectVsFeature", {
     },
     
     _getChartConfig: function() {
+
         return {
             chart: {
                 type: 'column',
