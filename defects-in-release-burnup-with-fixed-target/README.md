@@ -6,6 +6,11 @@ The x axis is sprint in the release, up to the current sprint (if release is in 
 
 The y axis is count.
 
+![chart](./images/chart.png "The Chart")
+
+![settings](./images/settings.png "App Settings")
+
+
 App Settings allows the admin to choose the Defect states that can be counted as a "closed" state.
 
 App Settings also allows the admin to choose a field on the Iteration object to use for a target count -- this must be a decimal or integer field.

@@ -2,9 +2,11 @@
 
 ## Development Notes
 
-An app that shows the percentages of defects vs. stories in the last five sprints (based on story points).
+An app that shows the percentages of defects vs. stories assigned to the sprints in a release (based on story points or count).
 
-![screenshot](./images/screenshot.png "This is an example")
+Shows the past sprints and the current sprint (if appropriate).
+
+![chart](./images/screenshot.png "the chart")
 
 ### First Load
 
