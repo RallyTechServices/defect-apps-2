@@ -11,6 +11,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
     release: null,
     granularity: 'day',
     all_values: [],
+    defects_closed_after_start: [],
     
     config: {
         defaultSettings: {
@@ -77,8 +78,8 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         Deft.Chain.pipeline([
             this._getIterations,
             this._getChildIterations,
-            //this._getDefectsInRelease,
-            this._getDefectLookbackData,
+            this._getDefectsClosedAfterReleaseStart,
+            this._getDefectsAtEndOfEachSprint,
             this._makeChart
         ],this).always(function() { me.setLoading(false); });        
     },
@@ -195,7 +196,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
     },
     
     // loop through the sprints, do each sprint's last day data
-    _getDefectLookbackData: function(defects) {
+    _getDefectsAtEndOfEachSprint: function(defects) {
         var me = this,
             deferred = Ext.create('Deft.Deferred');
 
@@ -211,7 +212,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             
             promises.push(
                 function() {
-                    return me._getDefectLookbackDataForSprint(end_date,oids);
+                    return me._getDefectsAtEndOfEachSprintForSprintEndDate(end_date,oids);
                 }
             );
         });
@@ -234,17 +235,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
                     })
                 };
                 
-                var closed_series = {
-                    name: 'Fixed in Release',
-                    data: Ext.Array.map(results, function(result_set){
-                        
-                        var closed_defects = Ext.Array.filter(result_set, function(result){
-                            return Ext.Array.contains(closedStates,result.get('State'));
-                        });
-                        
-                        return closed_defects.length;
-                    })
-                };
+                var closed_series = this._getClosedSeries(results);
                 
                 var target_series = this._getTargetSeries();
                 
@@ -257,6 +248,29 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         });
         
         return deferred.promise;
+    },
+    
+    _getClosedSeries: function(iteration_sets) {
+        var defect_oids = this.defects_closed_after_start;
+        var closedStates = this.getSetting('closedStateValues') || [];
+        if ( !Ext.isArray(closedStates) ) { closedStates = closedStates.split(/,/); }
+        
+        var data = Ext.Array.map(iteration_sets, function(result_set){
+            var closed_defects = Ext.Array.filter(result_set, function(result){
+                return Ext.Array.contains(closedStates,result.get('State'));
+            });
+            
+            closed_defects = Ext.Array.filter(closed_defects, function(defect){
+                return Ext.Array.contains(defect_oids, defect.get('ObjectID'));
+            });
+            
+            return closed_defects.length;
+        });
+        
+        return {
+            name: 'Fixed in Release',
+            data: data
+        };
     },
     
     _getTargetSeries: function() {
@@ -297,7 +311,51 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         
     },
     
-    _getDefectLookbackDataForSprint: function(end_date,defect_oids) {    
+    _getDefectsClosedAfterReleaseStart: function(){
+        var me = this,
+            deferred = Ext.create('Deft.Deferred'),
+            start_date = this.release.get('ReleaseStartDate');
+        
+        var filters = [];
+        
+        Ext.Array.push(filters, [
+            {property:'_TypeHierarchy',value:'Defect'},
+            {property:'_ProjectHierarchy',value: this.getContext().getProject().ObjectID},
+            {property:'_ValidFrom', operator: '>=', value: Rally.util.DateTime.toIsoString(start_date) }
+        ]);
+        
+        if ( !Ext.isEmpty( this.base_filter ) ) {
+            this.logger.log("Using base filter: ", this.base_filter);
+            filters.push(this.base_filter);
+        }
+        
+        var config = {
+            fetch: ['State','ObjectID'],
+            hydrate: ['State'],
+            removeUnauthorizedSnapshots: true,
+            filters: filters
+        };
+        
+        TSUtilities.loadLookbackRecords(config).then({
+            success: function(results) {
+                this.defects_closed_after_start = Ext.Array.map(results, function(snap){
+                    return snap.get('ObjectID');
+                });
+                
+                this.defects_closed_after_start = Ext.Array.unique(this.defects_closed_after_start);
+                
+                deferred.resolve();
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            },
+            scope: this
+        });
+        
+        return deferred.promise;
+    },
+    
+    _getDefectsAtEndOfEachSprintForSprintEndDate: function(end_date,defect_oids) {    
         var filters = [];
         
         if ( defect_oids.length > 0 ) {

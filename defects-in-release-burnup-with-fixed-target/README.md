@@ -18,7 +18,7 @@ App Settings also allows the admin to choose a field on the Iteration object to 
 Series:
   * Product Defects: At the end of every sprint (or today if the current sprint), count the number of defects that are NOT in a closed state.  
   * Release Target:  The value of the target count field on all the iterations at the leaf node projects (ignores parent values, but sums up all the leaf node projects)
-  * Fixed in Release:  At the end of every sprint (or today if the current sprint), count the number of defects that ARE in a closed state.
+  * Fixed in Release:  At the end of every sprint (or today if the current sprint), count the number of defects that ARE in a closed state that closed during the sprint.
   
   
   
