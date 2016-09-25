@@ -15,7 +15,8 @@ Ext.define("TSFixedTargetReleaseBurnup", {
     
     config: {
         defaultSettings: {
-            closedStateValues: ['Closed'],
+            stateFieldName: 'ScheduleState',
+            closedStateValues: ['Accepted'],
             sprintTargetField: 'ChildrenPlannedVelocity'
         }
     },
@@ -25,6 +26,12 @@ Ext.define("TSFixedTargetReleaseBurnup", {
     },
                         
     launch: function() {
+        this.closed_state_values = ['Accepted'];   
+//        this.closed_state_values = this.getSetting('closedStateValues') || [];
+//        if ( !Ext.isArray(this.closed_state_values) ) { this.closed_state_values = this.closed_state_values.split(/,/); }
+//        
+        this.state_field_name = "ScheduleState";
+        
         this._addSelectors(this.down('#selector_box'));
     },
     
@@ -159,7 +166,6 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         
         TSUtilities.loadWsapiRecords(config).then({
             success: function(results) {
-                console.log(results);
                 this.child_iterations = Ext.Array.filter(results, function(result){
                     return ( result.get('Project').Children.Count === 0 );
                 });
@@ -176,7 +182,8 @@ Ext.define("TSFixedTargetReleaseBurnup", {
     
     _getDefectsInRelease: function() {
         var release = this.release;
-        
+        var state_field = this.state_field_name;
+
         // Changed: get all defects
         var filters = [{property:'ObjectID',operator:'>',value:0}];
 //        var filters = Rally.data.wsapi.Filter.or([
@@ -189,7 +196,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             limit:Infinity,
             pageSize: 2000,
             filters: filters,
-            fetch: ['ObjectID','State']
+            fetch: ['ObjectID',state_field]
         };
         
         return TSUtilities.loadWsapiRecords(config);
@@ -200,7 +207,9 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         var me = this,
             deferred = Ext.create('Deft.Deferred');
 
-        var oids = Ext.Array.map(defects || [], function(defect){
+        var state_field = this.state_field_name;
+
+        var allowed_oids = Ext.Array.map(defects || [], function(defect){
             return defect.get('ObjectID');
         });
         
@@ -212,7 +221,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             
             promises.push(
                 function() {
-                    return me._getDefectsAtEndOfEachSprintForSprintEndDate(end_date,oids);
+                    return me._getDefectsAtEndOfEachSprintForSprintEndDate(end_date,allowed_oids);
                 }
             );
         });
@@ -220,15 +229,14 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         
         Deft.Chain.sequence(promises,me).then({
             success: function(results) {
-                var closedStates = this.getSetting('closedStateValues') || [];
-                if ( !Ext.isArray(closedStates) ) { closedStates = closedStates.split(/,/); }
+                var closedStates = this.closed_state_values;
                 
                 var open_series = {
                     name: 'Product Defects',
                     data: Ext.Array.map(results, function(result_set){
                         
                         var open_defects = Ext.Array.filter(result_set, function(result){
-                            return !Ext.Array.contains(closedStates,result.get('State'));
+                            return !Ext.Array.contains(closedStates,result.get(state_field));
                         });
                         
                         return open_defects.length;
@@ -252,12 +260,12 @@ Ext.define("TSFixedTargetReleaseBurnup", {
     
     _getClosedSeries: function(iteration_sets) {
         var defect_oids = this.defects_closed_after_start;
-        var closedStates = this.getSetting('closedStateValues') || [];
-        if ( !Ext.isArray(closedStates) ) { closedStates = closedStates.split(/,/); }
+        var closedStates = this.closed_state_values || [];
+        var state_field = this.state_field_name;
         
         var data = Ext.Array.map(iteration_sets, function(result_set){
             var closed_defects = Ext.Array.filter(result_set, function(result){
-                return Ext.Array.contains(closedStates,result.get('State'));
+                return Ext.Array.contains(closedStates,result.get(state_field));
             });
             
             closed_defects = Ext.Array.filter(closed_defects, function(defect){
@@ -315,13 +323,18 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         var me = this,
             deferred = Ext.create('Deft.Deferred'),
             start_date = this.release.get('ReleaseStartDate');
+
+        var state_field = this.state_field_name;
+        var closed_state_values = this.closed_state_values;
         
         var filters = [];
-        
+        // 
         Ext.Array.push(filters, [
             {property:'_TypeHierarchy',value:'Defect'},
             {property:'_ProjectHierarchy',value: this.getContext().getProject().ObjectID},
-            {property:'_ValidFrom', operator: '>=', value: Rally.util.DateTime.toIsoString(start_date) }
+            {property:'_ValidFrom', operator: '>=', value: Rally.util.DateTime.toIsoString(start_date) },
+            {property:state_field,operator:'in',value:closed_state_values},
+            {property:'_PreviousValues.' + state_field,operator:'exists',value:true}
         ]);
         
         if ( !Ext.isEmpty( this.base_filter ) ) {
@@ -330,8 +343,8 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         }
         
         var config = {
-            fetch: ['State','ObjectID'],
-            hydrate: ['State'],
+            fetch: [state_field,'ObjectID'],
+            hydrate: [state_field],
             removeUnauthorizedSnapshots: true,
             filters: filters
         };
@@ -355,11 +368,13 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         return deferred.promise;
     },
     
-    _getDefectsAtEndOfEachSprintForSprintEndDate: function(end_date,defect_oids) {    
+    _getDefectsAtEndOfEachSprintForSprintEndDate: function(end_date,allowed_oids) {    
         var filters = [];
+        var state_field = this.state_field_name;
+
         
-        if ( defect_oids.length > 0 ) {
-            filters.push({property:'ObjectID',operator:'in',value:defect_oids});
+        if ( allowed_oids.length > 0 ) {
+            filters.push({property:'ObjectID',operator:'in',value:allowed_oids});
         }
         
         Ext.Array.push(filters, [
@@ -373,9 +388,11 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             filters.push(this.base_filter);
         }
         
+        var fetch = ['ObjectID', state_field];
+        
         var config = {
-            fetch: ['State','ObjectID'],
-            hydrate: ['State'],
+            fetch: fetch,
+            hydrate: [state_field],
             removeUnauthorizedSnapshots: true,
             filters: filters
         };
@@ -409,7 +426,9 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         });
     },
     
-    _getChartStoreConfig: function(oids) {        
+    _getChartStoreConfig: function(oids) {   
+        var state_field = this.state_field_name;
+
         return {
            find: {
                ObjectID: { "$in": oids },
@@ -417,8 +436,8 @@ Ext.define("TSFixedTargetReleaseBurnup", {
                _TypeHierarchy: 'Defect' 
            },
            removeUnauthorizedSnapshots: true,
-           fetch: ['ObjectID','State','FormattedID',this.group_field,'CreationDate'],
-           hydrate: ['State',this.group_field],
+           fetch: ['ObjectID',state_field,'FormattedID',this.group_field,'CreationDate'],
+           hydrate: [state_field,this.group_field],
            sort: {
                '_ValidFrom': 1
            },
@@ -506,6 +525,9 @@ Ext.define("TSFixedTargetReleaseBurnup", {
     getSettingsFields: function() {
         var me = this;
         var left_margin = 5;
+        
+        var state_field = this.state_field_name;
+        
         return [{
             name: 'defectFilter',
             xtype: 'tssettingsfilterfield',
@@ -529,16 +551,16 @@ Ext.define("TSFixedTargetReleaseBurnup", {
                 return ( Ext.Array.contains(valid_types,defn.AttributeType) );
             }        
             //
-        },{
-            name: 'closedStateValues',
-            xtype: 'tsmultifieldvaluepicker',
-            model: 'Defect',
-            field: 'State',
-            margin: left_margin,
-            fieldLabel: 'States to Consider Closed',
-            labelWidth: 150,
-            margin: '5 5 100 5',
-            readyState: 'ready'
+//        },{
+//            name: 'closedStateValues',
+//            xtype: 'tsmultifieldvaluepicker',
+//            model: 'Defect',
+//            field: state_field,
+//            margin: left_margin,
+//            fieldLabel: 'States to Consider Closed',
+//            labelWidth: 150,
+//            margin: '5 5 100 5',
+//            readyState: 'ready'
         }];
     },
     

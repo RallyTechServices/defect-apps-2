@@ -11,7 +11,6 @@ The y axis is count.
 ![settings](./images/settings.png "App Settings")
 
 
-App Settings allows the admin to choose the Defect states that can be counted as a "closed" state.
 
 App Settings also allows the admin to choose a field on the Iteration object to use for a target count -- this must be a decimal or integer field.
 
@@ -23,6 +22,8 @@ Series:
   
   
 ## Development Notes
+
+* commented out sections that allowed the admin to pick closed states.  The app now uses Schedule State to determine closed or open
 
 ### First Load
 
