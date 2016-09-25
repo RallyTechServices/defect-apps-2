@@ -707,6 +707,8 @@ Ext.define('CA.techservices.picker.FieldValuePicker', {
         var me = this,
             deferred = Ext.create('Deft.Deferred');
         
+        console.log('creating store for ', me.model);
+        
         Rally.data.ModelFactory.getModel({
             type: me.model,
             success: function(model) {
@@ -714,14 +716,14 @@ Ext.define('CA.techservices.picker.FieldValuePicker', {
                 
                 me.relayEvents(me.store, ['datachanged']);
                 deferred.resolve();
-//                model.getField(me.field).getAllowedValueStore().load({
-//                    callback: function(records, operation, success) {
-//                        Ext.Array.each(records, function(allowedValue) {
-//                            //each record is an instance of the AllowedAttributeValue model 
-//                            console.log(allowedValue.get('StringValue'));
-//                        });
-//                    }
-//                });
+                model.getField(me.field).getAllowedValueStore().load({
+                    callback: function(records, operation, success) {
+                        Ext.Array.each(records, function(allowedValue) {
+                            //each record is an instance of the AllowedAttributeValue model 
+                            console.log(allowedValue.get('StringValue'));
+                        });
+                    }
+                });
             },
             failure: function() {
                 deferred.reject("Problem getting model allowed value store");

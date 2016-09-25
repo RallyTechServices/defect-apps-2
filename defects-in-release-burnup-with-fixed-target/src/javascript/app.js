@@ -550,17 +550,17 @@ Ext.define("TSFixedTargetReleaseBurnup", {
                 var valid_types = ['INTEGER','QUANTITY','DECIMAL'];
                 return ( Ext.Array.contains(valid_types,defn.AttributeType) );
             }        
-            //
-//        },{
-//            name: 'closedStateValues',
-//            xtype: 'tsmultifieldvaluepicker',
-//            model: 'Defect',
-//            field: state_field,
-//            margin: left_margin,
-//            fieldLabel: 'States to Consider Closed',
-//            labelWidth: 150,
-//            margin: '5 5 100 5',
-//            readyState: 'ready'
+            
+        },{
+            name: 'closedStateValues',
+            xtype: 'tsmultifieldvaluepicker',
+            model: 'Defect',
+            field: state_field,
+            margin: left_margin,
+            fieldLabel: 'States to Consider Closed',
+            labelWidth: 150,
+            margin: '5 5 100 5',
+            readyState: 'ready'
         }];
     },
     

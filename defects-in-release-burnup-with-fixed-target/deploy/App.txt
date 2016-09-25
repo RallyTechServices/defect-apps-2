@@ -3,13 +3,13 @@
 <head>
     <title>TS Fixed Target Release Burnup</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Sun Sep 25 2016 16:22:34 GMT-0700 (PDT) -->
+    <!--  Build Date: Sun Sep 25 2016 16:29:21 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Sep 25 2016 16:22:34 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Sun Sep 25 2016 16:29:21 GMT-0700 (PDT)";
         var STORY    = "US428";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 127192435356;
+        var CHECKSUM = 127280143457;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -1308,6 +1308,8 @@ Ext.define('CA.techservices.picker.FieldValuePicker', {
         var me = this,
             deferred = Ext.create('Deft.Deferred');
         
+        console.log('creating store for ', me.model);
+        
         Rally.data.ModelFactory.getModel({
             type: me.model,
             success: function(model) {
@@ -1315,14 +1317,14 @@ Ext.define('CA.techservices.picker.FieldValuePicker', {
                 
                 me.relayEvents(me.store, ['datachanged']);
                 deferred.resolve();
-//                model.getField(me.field).getAllowedValueStore().load({
-//                    callback: function(records, operation, success) {
-//                        Ext.Array.each(records, function(allowedValue) {
-//                            //each record is an instance of the AllowedAttributeValue model 
-//                            console.log(allowedValue.get('StringValue'));
-//                        });
-//                    }
-//                });
+                model.getField(me.field).getAllowedValueStore().load({
+                    callback: function(records, operation, success) {
+                        Ext.Array.each(records, function(allowedValue) {
+                            //each record is an instance of the AllowedAttributeValue model 
+                            console.log(allowedValue.get('StringValue'));
+                        });
+                    }
+                });
             },
             failure: function() {
                 deferred.reject("Problem getting model allowed value store");
@@ -2504,17 +2506,17 @@ Ext.define("TSFixedTargetReleaseBurnup", {
                 var valid_types = ['INTEGER','QUANTITY','DECIMAL'];
                 return ( Ext.Array.contains(valid_types,defn.AttributeType) );
             }        
-            //
-//        },{
-//            name: 'closedStateValues',
-//            xtype: 'tsmultifieldvaluepicker',
-//            model: 'Defect',
-//            field: state_field,
-//            margin: left_margin,
-//            fieldLabel: 'States to Consider Closed',
-//            labelWidth: 150,
-//            margin: '5 5 100 5',
-//            readyState: 'ready'
+            
+        },{
+            name: 'closedStateValues',
+            xtype: 'tsmultifieldvaluepicker',
+            model: 'Defect',
+            field: state_field,
+            margin: left_margin,
+            fieldLabel: 'States to Consider Closed',
+            labelWidth: 150,
+            margin: '5 5 100 5',
+            readyState: 'ready'
         }];
     },
     
