@@ -73,6 +73,7 @@ Ext.define('TSUtilities', {
         var me = this;
                 
         var default_config = {
+            "useHttpPost":true
         };
         
         Ext.create('Rally.data.lookback.SnapshotStore', Ext.Object.merge(default_config,config)).load({

@@ -3,13 +3,13 @@
 <head>
     <title>TS Defect vs Feature</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Wed Sep 14 2016 14:23:28 GMT-0700 (PDT) -->
+    <!--  Build Date: Tue Oct 18 2016 07:50:12 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Sep 14 2016 14:23:28 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Tue Oct 18 2016 07:50:12 GMT-0700 (PDT)";
         var STORY    = "US431";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 4947684173;
+        var CHECKSUM = 4947687602;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>

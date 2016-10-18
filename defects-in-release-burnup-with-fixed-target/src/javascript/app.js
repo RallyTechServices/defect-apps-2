@@ -17,7 +17,8 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         defaultSettings: {
             stateFieldName: 'ScheduleState',
             closedStateValues: ['Accepted'],
-            sprintTargetField: 'ChildrenPlannedVelocity'
+            sprintTargetField: 'ChildrenPlannedVelocity',
+            limitToScheduledDefects: true
         }
     },
     
@@ -31,7 +32,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
 //        if ( !Ext.isArray(this.closed_state_values) ) { this.closed_state_values = this.closed_state_values.split(/,/); }
 //        
         this.state_field_name = "ScheduleState";
-        
+        this.limit_to_scheduled = this.getSetting('limitToScheduledDefects');
         this._addSelectors(this.down('#selector_box'));
     },
     
@@ -50,17 +51,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         });
         
         container.add({xtype:'container',flex:1});
-        
-//        container.add({
-//            xtype: 'rallybutton',
-//            iconCls: 'icon-export secondary rly-small',
-//            margin: 10,
-//            listeners: {
-//                click: this._export,
-//                scope: this
-//            }
-//        });
-        
+
         container.add({
             xtype: 'container',
             itemId: 'etlDate',
@@ -85,6 +76,7 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         Deft.Chain.pipeline([
             this._getIterations,
             this._getChildIterations,
+            this._getDefectsInIterations,
             this._getDefectsClosedAfterReleaseStart,
             this._getDefectsAtEndOfEachSprint,
             this._makeChart
@@ -319,7 +311,27 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         
     },
     
-    _getDefectsClosedAfterReleaseStart: function(){
+    _getDefectsInIterations: function(iterations) {
+        var me = this,
+            start_date = this.release.get('ReleaseStartDate'),
+            end_date = this.release.get('ReleaseDate');
+        
+        var filters = [
+            {property:'Iteration.StartDate',operator:'>=',value:Rally.util.DateTime.toIsoString(start_date)},
+            {property:'Iteration.EndDate',  operator:'<=',value:Rally.util.DateTime.toIsoString(end_date)}
+        ];
+        
+        var config = {
+            model: 'Defect',
+            filters: filters,
+            fetch: ['ObjectID']
+        };
+        
+        return TSUtilities.loadWsapiRecords(config);
+    },
+    
+    _getDefectsClosedAfterReleaseStart: function(candidate_defects){
+        // limit_to_scheduled
         var me = this,
             deferred = Ext.create('Deft.Deferred'),
             start_date = this.release.get('ReleaseStartDate');
@@ -336,6 +348,11 @@ Ext.define("TSFixedTargetReleaseBurnup", {
             {property:state_field,operator:'in',value:closed_state_values},
             {property:'_PreviousValues.' + state_field,operator:'exists',value:true}
         ]);
+//        
+        if ( this.limit_to_scheduled ) {
+            var candidate_oids = Ext.Array.map(candidate_defects, function(defect){ return defect.get('ObjectID'); });
+            filters.push({property:'ObjectID',operator:'in',value:candidate_oids});
+        }
         
         if ( !Ext.isEmpty( this.base_filter ) ) {
             this.logger.log("Using base filter: ", this.base_filter);
@@ -529,6 +546,12 @@ Ext.define("TSFixedTargetReleaseBurnup", {
         var state_field = this.state_field_name;
         
         return [{
+            name:'limitToScheduledDefects',
+            xtype:'rallycheckboxfield',
+            label: 'Limit to Defects Scheduled into Sprints',
+            labelWidth: 150,
+            margin: 5
+        },{
             name: 'defectFilter',
             xtype: 'tssettingsfilterfield',
             label: 'Filter:',
